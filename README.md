@@ -10,26 +10,30 @@ After `config.sh` has registered the runner, validate and remediate the host:
 curl -fsSL https://raw.githubusercontent.com/insurex/ci-infra/main/scripts/runner-healthcheck.sh | bash -s -- --fix
 ```
 
-Report only (no changes):
+Report only, no changes — drop the `-s -- --fix`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/insurex/ci-infra/main/scripts/runner-healthcheck.sh | bash
 ```
 
-Exit codes: `0` all pass, `1` failures, `2` warnings only — usable as a provisioning gate.
-
-Install all helpers permanently:
+Install all four helpers into `~/.local/bin`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/insurex/ci-infra/main/scripts/install.sh | bash
 ```
 
-> If this repo is **private**, raw URLs need auth:
-> ```bash
-> curl -fsSL -H "Authorization: token $GH_TOKEN" \
->   https://raw.githubusercontent.com/insurex/ci-infra/main/scripts/runner-healthcheck.sh | bash
-> ```
-> Making the repo public avoids the token entirely. Nothing here contains secrets.
+Exit codes: `0` all pass, `1` failures, `2` warnings only — usable as a provisioning gate:
+
+```bash
+curl -fsSL .../runner-healthcheck.sh | bash -s -- --fix || echo "host not fit for CI"
+```
+
+`--fix` uses `sudo` for the docker group and service install, so it needs a sudo-capable
+user. On a brand-new host, run it once *without* `--fix` to see what it would change.
+
+> This repo is public so the raw URLs need no auth. If it is ever made private, add
+> `-H "Authorization: token $GH_TOKEN"` to each `curl`, and pass `GH_TOKEN` through to
+> `install.sh` (`| GH_TOKEN="$GH_TOKEN" bash`) so it can fetch its siblings.
 
 ## Scripts
 

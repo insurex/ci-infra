@@ -5,8 +5,11 @@ set -euo pipefail
 RAW="${RAW_BASE:-https://raw.githubusercontent.com/insurex/ci-infra/main/scripts}"
 DEST="${DEST:-$HOME/.local/bin}"
 mkdir -p "$DEST"
+# Private repo: pass GH_TOKEN and raw.githubusercontent will serve the file.
+AUTH=()
+[ -n "${GH_TOKEN:-}" ] && AUTH=(-H "Authorization: token $GH_TOKEN")
 for s in runner-healthcheck runner-jobs runner-steps runner-tail; do
-  curl -fsSL "$RAW/$s.sh" -o "$DEST/$s"
+  curl -fsSL "${AUTH[@]}" "$RAW/$s.sh" -o "$DEST/$s"
   chmod +x "$DEST/$s"
   echo "installed $DEST/$s"
 done
