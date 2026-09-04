@@ -79,7 +79,8 @@ warn() { printf "  ${Y}WARN${N}  %s\n" "$*"; WARN=$((WARN+1)); }
 bad()  { printf "  ${R}FAIL${N}  %s\n" "$*"; FAIL=$((FAIL+1)); }
 info() { printf "        %s\n" "$*"; }
 hdr()  { printf "\n${B}== %s ==${N}\n" "$*"; }
-fixed(){ printf "  ${G}FIXED${N} %s\n" "$*"; }
+FIXES=0
+fixed(){ printf "  ${G}FIXED${N} %s\n" "$*"; FIXES=$((FIXES+1)); }
 
 # ---------- platform ----------
 OS="unknown"; IS_WSL=0; SVC_MGR="none"
@@ -337,7 +338,17 @@ fi
 
 # ---------- summary ----------
 hdr "Summary"
-printf "  ${G}%d pass${N}   ${Y}%d warn${N}   ${R}%d fail${N}\n" "$PASS" "$WARN" "$FAIL"
+printf "  ${G}%d pass${N}   ${Y}%d warn${N}   ${R}%d fail${N}" "$PASS" "$WARN" "$FAIL"
+[ "$FIXES" -gt 0 ] && printf "   ${G}%d fixed${N}" "$FIXES"
+printf "\n"
+if [ "$FIXES" -gt 0 ]; then
+  # A finding is counted when detected, which is BEFORE --fix remediates it on the
+  # same pass. So counts above can name problems that no longer exist. We do not
+  # claim success we have not observed - re-run to get a clean verdict.
+  printf "\n  %d remediation(s) applied. The counts above were taken BEFORE fixing,\n" "$FIXES"
+  printf "  so re-run without --fix to confirm the real state:\n"
+  printf "    %s\n" "${0##*/}"
+fi
 if [ "$FAIL" -gt 0 ]; then
   [ "$DO_FIX" = 1 ] || printf "\n  re-run with ${B}--fix${N} to apply the safe remediations.\n"
   exit 1
