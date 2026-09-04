@@ -30,8 +30,24 @@ Run over the network:
 USAGE
 }
 
-RUNNER_DIR="${RUNNER_DIR:-$HOME/actions-runner}"
+RUNNER_DIR="${RUNNER_DIR:-}"
 DO_FIX=0
+DISCOVERED=""
+
+# A host often runs SEVERAL runners (the WSL boxes run three, in
+# /opt/actions-runner-local-{1,2,3}). Find every runner root so we can say so,
+# rather than silently checking one and implying the host is fine.
+discover_runners() {
+  local d
+  for d in "$HOME"/actions-runner /opt/actions-runner-local-* /opt/actions-runner* \
+           /actions-runner* "$HOME"/actions-runner-*; do
+    [ -d "$d" ] || continue
+    # a real runner root has the config script or a registration
+    if [ -f "$d/config.sh" ] || [ -f "$d/.runner" ]; then
+      printf '%s\n' "$d"
+    fi
+  done | awk '!seen[$0]++'
+}
 # NOTE: a while/shift loop, not `for a in "$@"` - `shift` inside a for loop does
 # not affect the already-captured iteration list, which makes `--dir PATH` fragile.
 # Usage text is a heredoc, not `sed "$0"`, because under `curl | bash` the script
@@ -48,6 +64,15 @@ while [ $# -gt 0 ]; do
 done
 
 G=$'\033[0;32m'; R=$'\033[0;31m'; Y=$'\033[0;33m'; B=$'\033[1m'; N=$'\033[0m'
+
+if [ -z "$RUNNER_DIR" ]; then
+  DISCOVERED=$(discover_runners)
+  if [ -n "$DISCOVERED" ]; then
+    RUNNER_DIR=$(printf '%s\n' "$DISCOVERED" | head -1)
+  else
+    RUNNER_DIR="$HOME/actions-runner"
+  fi
+fi
 PASS=0; WARN=0; FAIL=0
 ok()   { printf "  ${G}PASS${N}  %s\n" "$*"; PASS=$((PASS+1)); }
 warn() { printf "  ${Y}WARN${N}  %s\n" "$*"; WARN=$((WARN+1)); }
@@ -80,6 +105,12 @@ info "hostname : $(hostname)"
 info "user     : $(id -un)  (uid $(id -u))"
 info "runner   : $RUNNER_DIR"
 info "init     : $SVC_MGR"
+NRUN=$(printf '%s\n' "$DISCOVERED" | grep -c . 2>/dev/null || echo 0)
+if [ "${NRUN:-0}" -gt 1 ]; then
+  printf "\n  ${Y}NOTE${N}  this host has %s runner installations; only the first is checked below.\n" "$NRUN"
+  printf '%s\n' "$DISCOVERED" | sed 's/^/          /'
+  info "check each: runner-healthcheck --dir <path>"
+fi
 
 # ---------- 1. runner configured ----------
 hdr "Runner registration"
